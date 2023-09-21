@@ -1,0 +1,427 @@
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>T</title>
+    <style>
+      * {
+        padding: 0;
+        margin: 0;
+      }
+
+      body {
+        overflow: hidden;
+        background-color: rgb(39, 39, 39);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+      }
+
+      #score {
+        position: absolute;
+        top: 2vh;
+        color: white;
+        font-size: 5vh;
+      }
+
+      .grid-line {
+        stroke: #4d4d4d;
+        stroke-width: 1;
+      }
+
+      .block {
+        height: 5%;
+        width: 10%;
+        stroke: grey;
+        stroke-width: 1;
+      }
+    </style>
+    <script>
+      window.onload = () => {
+        let fallSpeed = 800;
+        let activeTetromino;
+        const field = document.getElementById("field");
+        const score = document.getElementById("score");
+        let gameFrame = null;
+
+        const tetrominoes = [
+          {
+            color: "lightskyblue",
+            shape: [
+              [0, 0, 0, 0],
+              [1, 1, 1, 1],
+              [0, 0, 0, 0],
+              [0, 0, 0, 0],
+            ],
+          },
+          {
+            color: "blue",
+            shape: [
+              [0, 0, 0],
+              [1, 0, 0],
+              [1, 1, 1],
+            ],
+          },
+          {
+            color: "orange",
+            shape: [
+              [0, 0, 0],
+              [0, 0, 1],
+              [1, 1, 1],
+            ],
+          },
+          {
+            color: "yellow",
+            shape: [
+              [1, 1],
+              [1, 1],
+            ],
+          },
+          {
+            color: "green",
+            shape: [
+              [0, 0, 0],
+              [0, 1, 1],
+              [1, 1, 0],
+            ],
+          },
+          {
+            color: "purple",
+            shape: [
+              [0, 0, 0],
+              [0, 1, 0],
+              [1, 1, 1],
+            ],
+          },
+          {
+            color: "red",
+            shape: [
+              [0, 0, 0],
+              [1, 1, 0],
+              [0, 1, 1],
+            ],
+          },
+        ];
+
+        runGame();
+
+        function newTetromino() {
+          const x = 3,
+            y = -3;
+          const tetrominoType = tetrominoes[Math.floor(Math.random() * 7)];
+          activeTetromino = {
+            x,
+            y,
+            shape: Object.assign([], tetrominoType.shape),
+            blocks: [],
+          };
+          for (let i = 0; i < tetrominoType.shape.length; i++) {
+            for (let j = 0; j < tetrominoType.shape[i].length; j++) {
+              if (tetrominoType.shape[i][j]) {
+                activeTetromino.blocks.push(
+                  field.appendChild(newRect(j + x, i + y, tetrominoType.color))
+                );
+              }
+            }
+          }
+          fallSpeed -= 10;
+        }
+
+        function newRect(x, y, color) {
+          const rect = document.createElementNS(
+            "http://www.w3.org/2000/svg",
+            "rect"
+          );
+          [
+            ["class", "block"],
+            ["fill", color],
+            ["x", `${x * 10}%`],
+            ["y", `${y * 5}%`],
+          ].forEach((prop) => rect.setAttribute(...prop));
+          return rect;
+        }
+
+        function moveTetromino(x_dir, y_dir, lock) {
+          for (const block of activeTetromino.blocks) {
+            const _x =
+              Number(block.getAttribute("x").split("%")[0]) + 10 * x_dir;
+            const _y =
+              Number(block.getAttribute("y").split("%")[0]) + 5 * y_dir;
+            const _block = document.querySelector(`[x="${_x}%"][y="${_y}%"`);
+            if (
+              y_dir > 0 &&
+              (_y === 100 ||
+                (_block && !activeTetromino.blocks.includes(_block)))
+            ) {
+              clearRows();
+              newTetromino();
+              return null;
+            }
+            if (
+              _x < 0 ||
+              _x > 90 ||
+              (_block && !activeTetromino.blocks.includes(_block))
+            ) {
+              return null;
+            }
+          }
+          for (const block of activeTetromino.blocks) {
+            block.setAttribute(
+              "x",
+              `${(block.getAttribute("x").split("%")[0] / 10 + x_dir) * 10}%`
+            );
+            block.setAttribute(
+              "y",
+              `${(block.getAttribute("y").split("%")[0] / 5 + y_dir) * 5}%`
+            );
+          }
+          activeTetromino.x += x_dir;
+          activeTetromino.y += y_dir;
+        }
+
+        function rotate() {
+          let rotatedShape = activeTetromino.shape.map((val, index) =>
+            activeTetromino.shape.map((row) => row[index]).reverse()
+          );
+          let rotatedBlocks = [];
+          let x_offsetOptions = (y_offsetOptions =
+            activeTetromino.shape[0].length == 4 ? [-2, -1, 1, 2] : [-1, 1]);
+          let offset_x = 0;
+          let offset_y = 0;
+          for (let i = 0; i < rotatedShape.length; i++) {
+            for (let j = 0; j < rotatedShape[i].length; j++) {
+              if (rotatedShape[i][j]) {
+                let _x = (j + activeTetromino.x + offset_x) * 10;
+                let _y = (i + activeTetromino.y + offset_y) * 5;
+                const _block = document.querySelector(
+                  `[x="${_x}%"][y="${_y}%"`
+                );
+                const _otherBlock =
+                  _block && !activeTetromino.blocks.includes(_block);
+                if (_x < 0 || _x > 90) {
+                  i = j = -1;
+                  offset_x += _x < 0 ? 1 : -1;
+                  break;
+                }
+                if (_y > 95) {
+                  i = j = -1;
+                  offset_y -= 1;
+                  break;
+                }
+                if (_otherBlock) {
+                  if (
+                    x_offsetOptions.length == 0 &&
+                    y_offsetOptions.length == 0
+                  ) {
+                    return null;
+                  } else if (y_offsetOptions.length == 0) {
+                    i = j = -1;
+                    offset_x = x_offsetOptions.pop();
+                    break;
+                  } else {
+                    i = j = -1;
+                    offset_y = y_offsetOptions.pop();
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          for (let i = 0; i < rotatedShape.length; i++) {
+            for (let j = 0; j < rotatedShape[i].length; j++) {
+              if (rotatedShape[i][j]) {
+                let block = activeTetromino.blocks.pop();
+                block.setAttribute(
+                  "x",
+                  `${(j + activeTetromino.x + offset_x) * 10}%`
+                );
+                block.setAttribute(
+                  "y",
+                  `${(i + activeTetromino.y + offset_y) * 5}%`
+                );
+                rotatedBlocks.push(block);
+              }
+            }
+          }
+          activeTetromino.shape = rotatedShape;
+          activeTetromino.blocks = rotatedBlocks;
+          activeTetromino.x += offset_x;
+          activeTetromino.y += offset_y;
+        }
+
+        function clearRows() {
+          for (let i = 0; i < 100; i += 5) {
+            let combo = true;
+            for (let j = 0; j < 100; j += 10) {
+              if (!document.querySelector(`[x="${j}%"][y="${i}%"`)) {
+                combo = false;
+                break;
+              }
+            }
+            if (combo) {
+              score.innerText =
+                "score: " + (Number(score.innerText.split("score: ")[1]) + 1);
+              for (let y = i; y >= 0; y -= 5) {
+                for (let x = 0; x < 100; x += 10) {
+                  let _block = document.querySelector(`[x="${x}%"][y="${y}%"`);
+                  if (y === i) {
+                    _block.remove();
+                  } else if (_block) {
+                    _block.setAttribute("y", `${y + 5}%`);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        function runFrame() {
+          let _y = activeTetromino.y;
+          moveTetromino(0, 1);
+          if (activeTetromino.y === _y) {
+            document
+              .querySelectorAll(".block")
+              .forEach((block) => block.remove());
+            alert(
+              "GAME OVER!!! \n\nscore = " + score.innerText.split("score: ")[1]
+            );
+            score.innerText = "score: 0";
+            newTetromino();
+            fallSpeed = 800;
+          }
+          window.clearInterval(gameFrame);
+          gameFrame = window.setInterval(runFrame, fallSpeed);
+        }
+
+        function runGame() {
+          newTetromino();
+
+          gameFrame = window.setInterval(runFrame, fallSpeed);
+
+          window.addEventListener("keydown", (event) => {
+            moveTetromino(
+              ["KeyA", "ArrowLeft"].includes(event.code)
+                ? -1
+                : ["KeyD", "ArrowRight"].includes(event.code)
+                ? 1
+                : 0,
+              ["KeyS", "ArrowDown"].includes(event.code) ? 1 : 0
+            );
+            if (["Space"].includes(event.code)) {
+              rotate();
+            }
+          });
+
+          // let xDown = null;
+          // let yDown = null;
+
+          // function getTouches(evt) {
+          //   return evt.touches ||             // browser API
+          //         evt.originalEvent.touches; // jQuery
+          // }
+
+          // function handleTouchStart(evt) {
+          //   const firstTouch = getTouches(evt)[0];
+          //   xDown = firstTouch.clientX;
+          //   yDown = firstTouch.clientY;
+          // };
+
+          // function handleTouchMove(evt) {
+          //   if (!xDown || !yDown) {
+          //     return;
+          //   }
+
+          //   var xUp = evt.touches[0].clientX;
+          //   var yUp = evt.touches[0].clientY;
+
+          //   var xDiff = xDown - xUp;
+          //   var yDiff = yDown - yUp;
+
+          //   if (Math.abs(xDiff) > Math.abs(yDiff)) {/*most significant*/
+          //     if (xDiff > 0) {
+          //       moveTetromino(-1, 0);
+          //     } else {
+          //       moveTetromino(1, 0);
+          //     }
+          //   } else {
+          //     if (yDiff > 0) {
+          //       rotate();
+          //     } else {
+          //       moveTetromino(0, 1);
+          //     }
+          //   }
+          //   /* reset values */
+          //   xDown = null;
+          //   yDown = null;
+          // };
+
+          // document.addEventListener('touchstart', handleTouchStart, false);
+          // document.addEventListener('touchmove', handleTouchMove, false);
+
+          window.addEventListener("touchstart", (event) => {
+            console;
+            if (event.touches[0].clientY < window.innerHeight * 0.7) {
+              if (event.touches[0].clientX < window.innerWidth / 3) {
+                moveTetromino(-1, 0);
+              } else if (
+                event.touches[0].clientX >
+                (window.innerWidth * 2) / 3
+              ) {
+                moveTetromino(1, 0);
+              } else {
+                rotate();
+              }
+            } else {
+              moveTetromino(0, 1);
+            }
+          });
+        }
+      };
+    </script>
+  </head>
+
+  <body>
+    <span id="score">score: 0</span>
+    <svg id="field" width="40vh" height="80vh">
+      <rect
+        width="100%"
+        height="100%"
+        fill="#1b1b1b"
+        stroke="grey"
+        stroke-width="1"
+      ></rect>
+
+      <line x1="10%" y1="0" x2="10%" y2="100%" class="grid-line"></line>
+      <line x1="20%" y1="0" x2="20%" y2="100%" class="grid-line"></line>
+      <line x1="30%" y1="0" x2="30%" y2="100%" class="grid-line"></line>
+      <line x1="40%" y1="0" x2="40%" y2="100%" class="grid-line"></line>
+      <line x1="50%" y1="0" x2="50%" y2="100%" class="grid-line"></line>
+      <line x1="60%" y1="0" x2="60%" y2="100%" class="grid-line"></line>
+      <line x1="70%" y1="0" x2="70%" y2="100%" class="grid-line"></line>
+      <line x1="80%" y1="0" x2="80%" y2="100%" class="grid-line"></line>
+      <line x1="90%" y1="0" x2="90%" y2="100%" class="grid-line"></line>
+
+      <line x1="0" y1="5%" x2="100%" y2="5%" class="grid-line"></line>
+      <line x1="0" y1="10%" x2="100%" y2="10%" class="grid-line"></line>
+      <line x1="0" y1="15%" x2="100%" y2="15%" class="grid-line"></line>
+      <line x1="0" y1="20%" x2="100%" y2="20%" class="grid-line"></line>
+      <line x1="0" y1="25%" x2="100%" y2="25%" class="grid-line"></line>
+      <line x1="0" y1="30%" x2="100%" y2="30%" class="grid-line"></line>
+      <line x1="0" y1="35%" x2="100%" y2="35%" class="grid-line"></line>
+      <line x1="0" y1="40%" x2="100%" y2="40%" class="grid-line"></line>
+      <line x1="0" y1="45%" x2="100%" y2="45%" class="grid-line"></line>
+      <line x1="0" y1="50%" x2="100%" y2="50%" class="grid-line"></line>
+      <line x1="0" y1="55%" x2="100%" y2="55%" class="grid-line"></line>
+      <line x1="0" y1="60%" x2="100%" y2="60%" class="grid-line"></line>
+      <line x1="0" y1="65%" x2="100%" y2="65%" class="grid-line"></line>
+      <line x1="0" y1="70%" x2="100%" y2="70%" class="grid-line"></line>
+      <line x1="0" y1="75%" x2="100%" y2="75%" class="grid-line"></line>
+      <line x1="0" y1="80%" x2="100%" y2="80%" class="grid-line"></line>
+      <line x1="0" y1="85%" x2="100%" y2="85%" class="grid-line"></line>
+      <line x1="0" y1="90%" x2="100%" y2="90%" class="grid-line"></line>
+      <line x1="0" y1="95%" x2="100%" y2="95%" class="grid-line"></line>
+    </svg>
+  </body>
+</html>
