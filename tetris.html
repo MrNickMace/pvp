@@ -110,7 +110,7 @@
         function newTetromino() {
           const x = 3,
             y = -3;
-          const tetrominoType = tetrominoes[Math.floor(Math.random() * 7)];
+          const tetrominoType = tetrominoes[Math.floor(Math.random() * tetrominoes.length)];
           activeTetromino = {
             x,
             y,

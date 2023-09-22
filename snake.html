@@ -1,0 +1,165 @@
+<html lang="en"><head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S</title>
+  <style>
+  
+    * {
+      padding: 0;
+      margin: 0;
+    }
+  
+    body {
+      overflow: hidden;
+      background-color: rgb(39, 39, 39);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+  
+    #score {
+      position: absolute;
+      top: 2vh;
+      color: white;
+      font-size: 5vh;
+    }
+  
+    .grid-line {
+      stroke: #4d4d4d;
+      stroke-width: 1;
+    }
+  
+    .block {
+      height: 1%;
+      width: 1%;
+      stroke: grey;
+      stroke-width: 1;
+    }
+  
+  </style><script>
+  
+    window.onload = () => {
+      
+      let speed = 200;
+      const field = document.getElementById('field');
+      const score = document.getElementById('score');
+      let body = null;
+      let direction = { x: 1, y: 0 };
+      let gameFrame = null;
+      
+  
+      runGame();
+      
+  
+      function initGrid() {
+  
+        const fieldSize = (window.innerHeight < window.innerWidth ? window.innerHeight : window.innerWidth) - 200;
+        [['width', `${fieldSize}`], ['height', `${fieldSize}`]].forEach(prop => field.setAttribute(...prop));
+  
+  
+        for (let i=0; i<100; i++) {
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          [['class', 'grid-line'], ['x1', `${i}%`], ['y1', 0], ['x2', `${i}%`], ['y2', '100%']].forEach(prop => line.setAttribute(...prop));
+          field.appendChild(line);
+        }
+        for (let i=0; i<100; i++) {
+          const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+          [['class', 'grid-line'], ['x1', 0], ['y1', `${i}%`], ['x2', '100%'], ['y2', `${i}%`]].forEach(prop => line.setAttribute(...prop));
+          field.appendChild(line);
+        }
+  
+      }
+  
+      function newRect(x, y, color) {
+        const rect = document.createElementNS("http://www.w3.org/2000/svg", "rect");
+        [['class', 'block'], ['fill', color], ['x', `${x}%`], ['y', `${y}%`]].forEach(prop => rect.setAttribute(...prop));
+        return rect;
+      }
+  
+      function move() {
+  
+        let _head = body[body.length-1];
+        const _x = Number(_head.getAttribute("x").split('%')[0]) + direction.x;
+        const _y = Number(_head.getAttribute("y").split('%')[0]) + direction.y;
+  
+        const apple = document.querySelector(`[x="${_x}%"][y="${_y}%"`);
+  
+        if (_x < 0 || _x > 99 || _y < 0 || _y > 99 || apple && !apple.classList.contains('apple')) {
+          alert('GAME OVER!!!');
+          body.forEach(block => block.remove());
+          score.innerText = 'score: 0';
+          speed-=10;
+          newSnake();
+          direction = { x: 1, y: 0 };
+          return null;
+        }
+  
+        if (apple) {
+          score.innerText = 'score: ' + (Number(score.innerText.split('score: ')[1])+1);
+          apple.setAttribute('fill', 'white');
+          apple.classList.remove('apple');
+          body.push(apple);
+          newApple();
+        } else {
+          body.push(body.shift());
+          _head = body[body.length-1];
+          _head.setAttribute("x", `${_x}%`);
+          _head.setAttribute("y", `${_y}%`);
+        }
+  
+      }
+  
+      function runFrame() {
+        move(0, 1);
+        window.clearInterval(gameFrame);
+        gameFrame = window.setInterval(runFrame, speed);
+      }
+  
+      function newSnake() {
+        body = [
+          field.appendChild(newRect(1, 3, 'white')),
+          field.appendChild(newRect(2, 3, 'white')),
+          field.appendChild(newRect(3, 3, 'white')),
+          field.appendChild(newRect(4, 3, 'white')),
+          field.appendChild(newRect(5, 3, 'white')),
+        ];
+      }
+  
+      function newApple() {
+        field.appendChild(newRect(Math.floor(Math.random() * 100), Math.floor(Math.random() * 100), 'red')).classList.add('apple');
+      }
+  
+      function runGame() {
+  
+        newSnake();
+  
+        for(let i=0; i<100; i++) {
+          newApple();
+        }
+  
+        initGrid();
+  
+        runFrame();
+  
+        window.addEventListener('keydown', (event) => {
+          direction.x = ['KeyA', 'ArrowLeft'].includes(event.code) ? -1 :  ['KeyD', 'ArrowRight'].includes(event.code) ? 1 : 0;
+          direction.y = ['KeyS', 'ArrowDown'].includes(event.code) ? 1 : ['KeyW', 'ArrowUp'].includes(event.code) ? -1 : 0;
+          move();
+          window.clearInterval(gameFrame);
+          gameFrame = window.setInterval(runFrame, speed);
+        });
+  
+      }
+  
+    }
+  
+  </script></head>
+  
+  
+  <body>
+    <span id="score">score: 0</span>
+    <svg id="field" width="100%" height="100%"></svg>
+  
+  </body></html>
